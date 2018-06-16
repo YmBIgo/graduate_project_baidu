@@ -9,7 +9,7 @@ import json
 
 original_url = "https://www.baidu.com/s?ie=utf-8&tn=baidu&wd={}&pn={}" # nojs=1
 # "红客联盟 先调任杂志社任主编" 亮仔 蓝溪 冰刀 uhhuhy 蝶起 黑夜隐士 墨斗 仙儿 孤狼 SuperM
-keyword = "红客联盟 SuperM"
+original_keyword = "红客联盟 {}"
 
 # gcp zone
 # gcloud config set compute/zone asia-east1
@@ -24,6 +24,7 @@ def get_page_content(url, before_url=""):
 	headers = {
 		'User-Agent': 'Mozilla/5.0 (X11; Linux i686; rv:50.0) Gecko/20100101 Firefox/50.0',
 		'referer': before_url.encode("utf-8")
+		# 'referer': before_url
 	}
 	baidu_page = requests.get(url, headers=headers)
 	soup = BeautifulSoup(baidu_page.text, "html.parser")
@@ -34,7 +35,7 @@ def check_baidu_rank(keyword):
 	soup = get_page_content(checking_url, "https://www.baidu.com/baidu.html?from=noscript")
 	before_url = checking_url
 	page_rank_result[keyword][1] = [checking_url]
-	get_baidu_page_results(1, soup)
+	get_baidu_page_results(1, soup, keyword)
 	baidu_single_page = check_baidu_rank_task(soup)
 	checking_url_num = 0
 	before_checking_url_num = 0
@@ -45,7 +46,7 @@ def check_baidu_rank(keyword):
 		soup = get_page_content(checking_url, before_url)
 		# save search results
 		page_rank_result[keyword][baidu_page_num] = [checking_url]
-		get_baidu_page_results(baidu_page_num, soup)
+		get_baidu_page_results(baidu_page_num, soup, keyword)
 		if checking_url_num == before_checking_url_num:
 			break
 		before_url = original_url.format(keyword, str(before_checking_url_num))
@@ -59,7 +60,7 @@ def check_baidu_rank_task(soup):
 	time.sleep(2+2*random.random())
 	return baidu_links
 
-def get_baidu_page_results(cur_num, soup):
+def get_baidu_page_results(cur_num, soup, keyword):
 	print("Saving search result {} at {}".format(keyword, str(cur_num)))
 	baidu_results = soup.find_all("div", class_="c-container")
 	for r in baidu_results:
@@ -75,7 +76,7 @@ def baidu_article_content(soup):
 		return span18_tag[0].text
 	return ""
 
-def additional_baidu_article():
+def additional_baidu_article(keyword):
 	baidu_num_result = list(page_rank_result[keyword].keys())
 	baidu_num_result.sort()
 	print(baidu_num_result)
@@ -87,19 +88,31 @@ def additional_baidu_article():
 		current_url = original_url.format(keyword, str((i-1)*10))
 		soup = get_page_content(current_url, before_url)
 		page_rank_result[keyword][i] = [current_url]
-		get_baidu_page_results(i, soup)
+		get_baidu_page_results(i, soup, keyword)
 		before_url = current_url
 
+def read_file_search_query():
+	query_file = open("baidu_search_query.txt", "r")
+	file_content = query_file.read()
+	file_content = file_content.replace("\n", ",")
+	return file_content.split(",")
 
+# import sys
+# reload(sys)
+# sys.setdefaultencoding("utf8")
 
-page_rank_result[keyword] = {}
-baidu_page_num = check_baidu_rank(keyword)
-additional_baidu_article()
+search_queries = read_file_search_query()
 
-print(page_rank_result)
+for kwd in search_queries:
+	search_keyword = original_keyword.format(kwd)
+	page_rank_result[search_keyword] = {}
+	baidu_page_num = check_baidu_rank(search_keyword)
+	additional_baidu_article(search_keyword)
 
-json_file = open("files/{}_baidu_result.json".format(keyword), "w")
-json.dump(page_rank_result, json_file, ensure_ascii=False, indent=4)
+	print(page_rank_result)
+
+	json_file = open("files/{}_baidu_result.json".format(search_keyword), "w")
+	json.dump(page_rank_result, json_file, ensure_ascii=False, indent=4)
 
 # use virustotal api to validate whether page is safe or not
 # https://www.virustotal.com/vtapi/v2/url/scan with params['apikey', 'url']
