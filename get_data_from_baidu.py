@@ -9,7 +9,8 @@ import json
 
 original_url = "https://www.baidu.com/s?ie=utf-8&tn=baidu&wd={}&pn={}" # nojs=1
 # "红客联盟 先调任杂志社任主编" 亮仔 蓝溪 冰刀 uhhuhy 蝶起 黑夜隐士 墨斗 仙儿 孤狼 SuperM
-original_keyword = "红客联盟 {}"
+# original_keyword = "红客联盟 {}"
+original_keyword = "绿色兵团 {}"
 
 # gcp zone
 # gcloud config set compute/zone asia-east1
@@ -40,14 +41,14 @@ def check_baidu_rank(keyword):
 	checking_url_num = 0
 	before_checking_url_num = 0
 	while (len(baidu_single_page) == 10 or checking_url_num < 990):
-		baidu_page_num = int(baidu_single_page[-1].text)
+		baidu_page_num = int(baidu_single_page[-1].text) if len(baidu_single_page)!=0 else 1
 		checking_url_num = (baidu_page_num-1)*10
 		checking_url = original_url.format(keyword, str(checking_url_num))
 		soup = get_page_content(checking_url, before_url)
 		# save search results
 		page_rank_result[keyword][baidu_page_num] = [checking_url]
 		get_baidu_page_results(baidu_page_num, soup, keyword)
-		if checking_url_num == before_checking_url_num:
+		if (checking_url_num <= before_checking_url_num):
 			break
 		before_url = original_url.format(keyword, str(before_checking_url_num))
 		baidu_single_page = check_baidu_rank_task(soup)
@@ -92,7 +93,7 @@ def additional_baidu_article(keyword):
 		before_url = current_url
 
 def read_file_search_query():
-	query_file = open("baidu_search_query.txt", "r")
+	query_file = open("baidu_search_query2.txt", "r")
 	file_content = query_file.read()
 	file_content = file_content.replace("\n", ",")
 	return file_content.split(",")
@@ -109,7 +110,7 @@ for kwd in search_queries:
 	baidu_page_num = check_baidu_rank(search_keyword)
 	additional_baidu_article(search_keyword)
 
-	print(page_rank_result)
+	print(page_rank_result[search_keyword][1][0])
 
 	json_file = open("files/{}_baidu_result.json".format(search_keyword), "w")
 	json.dump(page_rank_result, json_file, ensure_ascii=False, indent=4)
